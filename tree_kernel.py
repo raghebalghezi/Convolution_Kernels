@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Dec 31 19:50:04 2018
-
 @author: raghebal-ghezi
 """
 import networkx as nx
