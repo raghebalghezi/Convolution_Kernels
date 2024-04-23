@@ -2,102 +2,32 @@
 # -*- coding: utf-8 -*-
 """
 @author: raghebal-ghezi
+updated: 24.4.2024
 """
-import networkx as nx
-from networkx.algorithms.traversal.depth_first_search import dfs_tree
-from nltk import Tree
-import numpy as np
+import nltk
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+s1 = nltk.Tree.fromstring("(S (NP (DT The) (JJ bad) (NN researcher)) (VP (VBZ shreds) (NP (DT the) (JJ important) (NN paper))) (.) )")
+s2 = nltk.Tree.fromstring("(S (NP (DT The) (JJ angry) (NN dog)) (VP (VBD ate) (NP (DT the) (JJ juicy) (NN steak))) (.) )")
+s3 = nltk.Tree.fromstring("(S (NP (DT This)) (VP (VBZ is) (NP (PRP$ your) (NN mission)) (SBAR (IN should) (S (NP (PRP you)) (VP (VB choose) (S (VP (TO to) (VP (VB accept))))))) (.)))")
 
 
-
-def cos(a,b):
-    # calc cosine similairty
-    from numpy import dot
-    from numpy.linalg import norm
-
-    return dot(a, b)/(norm(a)*norm(b))
+def extract_subtrees(tree):
+    subtrees = [str(prod) for prod in tree.productions()]
+    return subtrees
 
 
+def binary_tree_kernel(tree1, tree2):
+    vectorizer = TfidfVectorizer().fit([tree1, tree2])
+    features1 = vectorizer.transform([tree1]).toarray()
+    features2 = vectorizer.transform([tree2]).toarray()
+    return cosine_similarity(features1, features2)
 
-def parse(sentence, nltk_tree=False):
-    '''
-    Convert a sentence from a constitiuency tree format to list of binary tuples
-    
-    INPUT: "(S (NP I) (VP (V saw) (NP him)))"
-    OUTPUT: [('S', 'NP'),('S', 'VP'), ('NP', "'I'"),('VP', 'V'),('VP', 'NP'),('V', "'saw'"),('NP', "'him'")]
-    '''
-    t = Tree.fromstring(sentence)
-    
-    if nltk_tree:
-        t.draw()
+s1 = ' '.join(extract_subtrees(s1))
+s2 = ' '.join(extract_subtrees(s2))
 
-    new_list = list()
-    for i in t.productions(): 
-       new_list.append(str(i).split(" "))
-    for j in new_list:
-        j.remove("->")
-    nodes_list = list()   
-    # flatten to binary tuple showing an edge between two nodes
-    for i in new_list:
-        if len(i) > 2:
-            for j in i[1:]:
-                nodes_list.append((i[0],j))
-        else:
-             nodes_list.append(tuple(i))
-             
-    return nodes_list 
-#
-parsed_tree = parse("(S (NP I) (VP (V saw) (NP him)))")
+print("Sentence 1:", s1)
+print("Sentence 2:", s2)
 
-def visualize(parsed_tree):
-    # takes list of binary tuples, visualize using matplotlib or PyDot
-    tree2graph = nx.DiGraph()
-    tree2graph.add_edges_from(parsed_tree)
-    nx.draw(tree2graph,with_labels=True)
-#    if pyDot_format:
-#        p = nx.drawing.nx_pydot.to_pydot(tree2graph)
-        
-
-g = nx.DiGraph()
-h = nx.DiGraph()
-
-g.add_edges_from(parse("(S (NP I) (VP (V kill) (NP him)))"))
-h.add_edges_from(parse("(S (NP I) (VP (V kill) (NP him)))"))
-    
-
-def kernel_tree(g,h):
-    '''
-    Implementation of Convolution Kernels (Collins and Duffy, 2002)
-    Compute the cosine similarity over two trees
-    INPUT: networkx DiGraph 
-    OUTPUT: 0 is identical to 1 is different
-    '''
-            
-    subtrees_G=[]
-    subtrees_H=[]
-    
-    for i,node in enumerate(g.nodes()):
-        subtrees_G.append(dfs_tree(g,node))
-        
-    for i,node in enumerate(h.nodes()):
-        subtrees_H.append(dfs_tree(h,node))
-    
-    
-    def label_check(d1,d2):
-        return d1==d2
-
-    all_subtrees=subtrees_G+subtrees_H
-  
-    v=[]
-    w=[]
-    for i,subtree in enumerate(all_subtrees):
-        if subtree.nodes()!=[]:
-            v.append(np.sum(np.array(list(map(lambda x: nx.is_isomorphic(subtree,x),subtrees_G)))))
-            w.append(np.sum(np.array(list(map(lambda x: nx.is_isomorphic(subtree,x),subtrees_H)))))
-
-#    print (v)
-#    print (w)
-    return cos(v,w)
-
-
-print(kernel_tree(g,h)) 
+print("Binary tree kernel similarity:", binary_tree_kernel(s1, s2)[0][0])
